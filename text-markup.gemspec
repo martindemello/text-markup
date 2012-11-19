@@ -4,12 +4,12 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'text/markup/version'
 
 Gem::Specification.new do |gem|
-  gem.name          = "text/markup"
-  gem.version       = Text/markup::VERSION
+  gem.name          = "text-markup"
+  gem.version       = Text::Markup::VERSION
   gem.authors       = ["Martin DeMello"]
   gem.email         = ["martindemello@gmail.com"]
-  gem.description   = %q{TODO: Write a gem description}
-  gem.summary       = %q{TODO: Write a gem summary}
+  gem.description   = %q{Library for handling marked-up text}
+  gem.summary       = %q{Library for handling marked-up text}
   gem.homepage      = ""
 
   gem.files         = `git ls-files`.split($/)

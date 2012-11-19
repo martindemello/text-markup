@@ -1,4 +1,4 @@
-require_relative 'markup'
+require_relative '../markup'
 
 module Text
   module Markup
