@@ -1,8 +1,11 @@
 require_relative '../markup'
+require_relative 'formatter'
 
 module Text
   module Markup
     module ANSI
+      extend Formatter
+
       CODE_RE = /(\e\[(?:\d{1,2};?)+\w)/
       CODE_TEMPLATE = "\e[%dm"
 
@@ -60,47 +63,31 @@ module Text
       # parse : string -> Tree
       def self.parse(text)
         pieces = text.split(CODE_RE, -1).reject {|i| i.empty?}
-        out = Tree.new(:root, nil, nil)
-        current = out
-
-        pieces.each do |piece|
+        pieces = pieces.map do |piece|
           if piece[0] != "\e"
-            current.add(:text, piece)
+            {:text => piece}
           elsif piece[-1] != 'm'
             # just strip out non-markup ansi sequences
+            nil
           else
-            current = current.add_modes(get_modes(piece))
+            get_modes(piece)
           end
         end
-
-        out.prune!
-        out
+        pieces = pieces.compact
+        Tree.read_from_stream(pieces)
       end
 
-      # format : Tree -> string
-      def self.format(tree)
-        ret = ""
-        if tree.tag == :text
-          ret += tree.value
-        elsif tree.tag == :root
-          ret += tree.children.map {|c| format(c)}.join("")
-        else
-          code = TO_CODE[[tree.tag, tree.value]]
-          if code
-            ret += CODE_TEMPLATE % code
-            tree.children.each do |c|
-              ret += format(c)
-            end
-            close = TO_CODE[[tree.tag, :off]]
-            if close
-              ret += CODE_TEMPLATE % close
-            end
-          end
-        end
-        ret
+      def self.format_text(text)
+        text
       end
-    end
 
+      # format_node : (tag, value) -> string
+      def self.format_node(tag, value)
+        code = TO_CODE[[tag, value]]
+        code ? CODE_TEMPLATE % code : nil
+      end
+
+    end  # module ANSI
   end  # module Markup
 end  # module Text
 
@@ -113,7 +100,6 @@ if __FILE__ == $0
     c.bold, "bold", c.on_blue, c.red, "bold red", "\e[21m", "red", c.reset, "none", "\n"
   ].join("")
   print a
-
 
   p a
   b = Text::Markup::ANSI.parse(a)

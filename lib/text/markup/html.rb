@@ -1,8 +1,11 @@
 require_relative '../markup'
+require_relative 'formatter'
 
 module Text
   module Markup
     module HTML
+      extend Formatter
+
       TAGS = {
         :bold => "b",
         :italic => "i",
@@ -16,7 +19,7 @@ module Text
         :bgcolor => 'background-color'
       }
 
-      def self.html_tag(tag, value)
+      def self.format_node(tag, value)
         if t = TAGS[tag]
           value == :on ? "<#{t}>" : "</#{t}>"
         elsif [:fgcolor, :bgcolor].include? tag
@@ -27,55 +30,25 @@ module Text
         end
       end
 
-      def self.html_text(text)
+      def self.format_text(text)
         text.gsub("\n", "<br/>")
       end
 
-      # format : Tree -> string
-      def self.format(tree)
-        ret = ""
-        if tree.tag == :text
-          ret += html_text(tree.value)
-        elsif tree.tag == :root
-          ret += tree.children.map {|c| format(c)}.join("")
-        else
-          code = html_tag(tree.tag, tree.value)
-          if code
-            ret += code
-            tree.children.each do |c|
-              ret += format(c)
-            end
-            close = html_tag(tree.tag, :off)
-            if close
-              ret += close
-            end
-          end
-        end
-        ret
-      end
-    end
-
+    end  # module HTML
   end  # module Markup
 end  # module Text
 
 if __FILE__ == $0
-  require 'term/ansicolor'
-  require 'text/markup/ansi'
-
-  c = Term::ANSIColor
-  a = ["hello world", c.bold, c.red, c.on_blue, "Red text:\n",
-    "\e[21m", c.green, "Green text", c.clear, "\n",
-    c.bold, "bold", c.on_blue, c.red, "bold red", "\e[21m", "red", c.reset, "none", "\n"
-  ].join("")
-  print a
+  a = [{:text => "hello world"}, {:bold => :on, :fgcolor => 'red', :bgcolor => 'blue'},
+    {:text => "Red text:\n"}, {:bold => :off, :fgcolor => 'green'},
+    {:text => 'Green text'}, {:reset => nil}, {:text => "none\n"}]
 
 
   p a
-  b = Text::Markup::ANSI.parse(a)
+  b = Text::Markup::Tree.read_from_stream(a)
   p b
 
   c = Text::Markup::HTML.format(b)
-  p c
   print c
 end
 

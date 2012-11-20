@@ -6,6 +6,21 @@ module Text
     class Tree
       attr_accessor :parent, :tag, :value, :children, :closed, :state
 
+      # read_from_stream : [{:tag => value}] -> Tree
+      #
+      # To write a new parser, tokenise your input into a list of
+      # {:tag => value} hashes and then call Tree.read_from_stream on
+      # the list.
+      def self.read_from_stream(stream)
+        out = Tree.new(:root, nil, nil)
+        current = out
+        stream.each do |piece|
+          current = current.add_all(piece)
+        end
+        out.prune!
+        out
+      end
+
       def initialize(tag, value, parent)
         @parent = parent
         @children = []
@@ -13,6 +28,26 @@ module Text
         @tag = tag
         @value = value
         @state = parent ? parent.state.dup : {}
+      end
+
+      def add_all(elements)
+        if elements[:reset]
+          close_all
+        elsif state.keys.any? {|k| state[k] && elements[k]}
+          update_with(elements)
+        else
+          append_all(elements)
+        end
+      end
+
+      # remove subtrees with no text
+      def prune!
+        self.children.each {|c| c.prune!}
+
+        self.children =
+          self.children.reject do |c|
+            c.tag != :text && c.children.empty?
+          end
       end
 
       def add(tag, value)
@@ -32,16 +67,16 @@ module Text
         end
       end
 
-      def append_all(modes)
-        if modes.empty?
+      def append_all(elements)
+        if elements.empty?
           self
         else
-          k = modes.keys.first
-          v = modes.delete(k)
+          k = elements.keys.first
+          v = elements.delete(k)
           if (v == :off)
-            append_all(modes)
+            append_all(elements)
           else
-            add(k, v).append_all(modes)
+            add(k, v).append_all(elements)
           end
         end
       end
@@ -67,37 +102,16 @@ module Text
       # this cleans up cases like       <b>text<i>text</b>text</i>
       # to the properly tree-structured <b>text<i>text</i></b><i>text</i>
       #
-      # TODO: consider only doing this for on/off tags
       # TODO: explore tree rewriting
-      def update_with(modes, state = self.state, restore = {})
-        if modes.empty? || modes.all? {|k, v| state[k] == v}
+      def update_with(elements, state = self.state, restore = {})
+        if elements.empty? || elements.all? {|k, v| state[k] == v}
           self.append_all(restore)
         else
-          restore[self.tag] = modes[self.tag] || self.value
+          restore[self.tag] = elements[self.tag] || self.value
           self.closed = true
-          modes.delete(self.tag)
-          self.parent.update_with(modes, state, restore)
+          elements.delete(self.tag)
+          self.parent.update_with(elements, state, restore)
         end
-      end
-
-      def add_modes(modes)
-        if modes[:reset]
-          close_all
-        elsif state.keys.any? {|k| state[k] && modes[k]}
-          update_with(modes)
-        else
-          append_all(modes)
-        end
-      end
-
-      # remove tags with no text
-      def prune!
-        self.children.each {|c| c.prune!}
-
-        self.children =
-          self.children.reject do |c|
-            c.tag != :text && c.children.empty?
-          end
       end
 
       def tree_inspect(i)
