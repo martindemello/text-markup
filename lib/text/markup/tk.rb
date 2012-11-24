@@ -21,22 +21,20 @@ module Text
 
       def initialize(container)
         super(container)
-        @atags = []
+        @next_tag = 'a'
       end
 
       def insert_formatted(pos, text)
         if parser
-          tree = @parser.parse(text)
-          insert(pos, *format(tree))
+          tree = parser.parse(text)
+          insert_markup_tree(pos, tree)
         else
           insert(pos, text)
         end
       end
 
       def insert_markup_tree(pos, tree)
-        a = format(tree)
-        #insert(pos, *a)
-        a.each_slice(2) {|i, j| insert(pos, i, j)}
+        insert(pos, *format(tree))
       end
 
       def format(tree) 
@@ -44,9 +42,9 @@ module Text
         if tree.tag == :text
           ret += format_text(tree.value, tree.state)
         else
-          ret += tree.children.map {|c| format(c)}
+          ret += tree.children.flat_map {|c| format(c)}
         end
-        ret.flatten
+        ret
       end
 
       def format_text(text, state)
@@ -59,10 +57,11 @@ module Text
             tag[:font] << t
           end
         end
-        t = TkTextTag.new(self, tag)
-        @atags << t
-        [text, t]
+        t = TkTextNamedTag.new(self, @next_tag, tag)
+        @next_tag = @next_tag.succ
+        [text, [t.id]]
       end
+
     end  # class TkMarkupText
   end  # module Markup
 end  # module Text
@@ -89,10 +88,10 @@ if __FILE__ == $0
     {:text => "Bold red text on blue:\n"}, {:bold => :off, :fgcolor => 'green'},
     {:text => 'Green text on blue'}, {:reset => nil}, {:text => "none\n"}]
 
-  p a
   b = Text::Markup::Tree.read_from_stream(a)
-  p b
 
+  text.insert('end', a.inspect)
+  text.insert('end', "\n\n")
   text.insert_markup_tree('end', b)
 
   Tk.mainloop
