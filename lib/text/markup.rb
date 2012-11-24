@@ -15,7 +15,7 @@ module Text
         out = Tree.new(:root, nil, nil)
         current = out
         stream.each do |piece|
-          current = current.add_all(piece)
+          current = current.add_all(piece.dup)
         end
         out.prune!
         out
