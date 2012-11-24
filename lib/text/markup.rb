@@ -31,7 +31,7 @@ module Text
       end
 
       def add_all(elements)
-        if elements[:reset]
+        if elements.has_key? :reset
           close_all
         elsif state.keys.any? {|k| state[k] && elements[k]}
           update_with(elements)
@@ -53,7 +53,7 @@ module Text
       def add(tag, value)
         t = Tree.new(tag, value, self)
         t.state = self.state.dup
-        t.state[tag] = value
+        t.state[tag] = value if tag != :text
         children.push(t)
         t.closed ? self : t
       end
